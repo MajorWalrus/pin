@@ -1,0 +1,3 @@
+Pin {pinPath = "C://Users//sjdutch//Desktop//aa_outstanding.txt", pinPoint = 31, pinAlias = "burden"}
+Pin {pinPath = "C://Users//sjdutch//Desktop//aa_outstanding.txt", pinPoint = 4, pinAlias = "test"}
+Pin {pinPath = "C://Users//sjdutch//Desktop//aa_outstanding.txt", pinPoint = 11, pinAlias = "mostly"}
