@@ -1,3 +1,6 @@
 Pin {pinPath = "C://Users//sjdutch//Desktop//aa_outstanding.txt", pinPoint = 31, pinAlias = "burden"}
 Pin {pinPath = "C://Users//sjdutch//Desktop//aa_outstanding.txt", pinPoint = 4, pinAlias = "test"}
 Pin {pinPath = "C://Users//sjdutch//Desktop//aa_outstanding.txt", pinPoint = 11, pinAlias = "mostly"}
+Pin {pinPath = "C://Users//sjdutch//Desktop//aa_524.txt", pinPoint = 6, pinAlias = "test2"}
+Pin {pinPath = "C://Users//sjdutch//Desktop//aa_524.txt", pinPoint = 6, pinAlias = ":r"}
+Pin {pinPath = "C:\\Users\\sjdutch\\Desktop\\eFile_AA_Test_Advisor_Upload.txt", pinPoint = 0, pinAlias = "use this advisor"}
