@@ -17,11 +17,13 @@
     list formatting - make the pins display fixed width
 -}
 
-import System.IO (FilePath)
+
 import Data.List (findIndices)
 import System.IO
 import System.Environment
 import System.Exit
+import System.Directory (doesDirectoryExist, doesFileExist)
+
 --import Options.Applicative
 --import System.Console.ANSI as ANSI
 
@@ -98,6 +100,7 @@ testFile2 = "C://Users//sjdutch//Desktop//aa_524.txt"
 -- scan file should have flags to ignore or replace known pins
 -- scan folder = above, but for all files in a folder
 -- scan folder recursive = above, but for all sub-folders
+-- scan here = scans the current directory use System.Directory.getCurrentDirectory
 -- output for the above should be a list of pins with the first 40 chars of the line, the file, the path
 -- read = reads a file and shows the user the contents ???? really?
 -- list = list all pins [this should have sorting & filtering]
@@ -219,3 +222,16 @@ parseArgs (x:xs) = case x of
 makeScan :: [String] -> Maybe PinCommand
 makeScan [] = Nothing
 makeScan (x:xs) = Just $ CommandScan x xs
+
+-- File Checkss
+
+-- 1. In same location.
+checkFile
+
+
+-- 2. File hash mismatch
+
+-- 3. Line hash mismatch
+
+-- All checks will be performed and reported.
+
