@@ -15,14 +15,17 @@
     new command "check" which looks for changed files, lines, or missing files in all pins
         - use check interally before showing pin, and when listing pins
     list formatting - make the pins display fixed width
+    new command "show -f " which takes a file and shows all the pins in that file
+    DONE new command "remove" tp delete a pin
+    DONE new command "rename" to rename a pin
 -}
 
 
-import Data.List (findIndices)
+import Data.List (findIndices, intercalate)
 import System.IO
 import System.Environment
 import System.Exit
-import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Directory (doesDirectoryExist, doesFileExist, removeFile)
 
 --import Options.Applicative
 --import System.Console.ANSI as ANSI
@@ -33,6 +36,9 @@ data Pin = Pin {
     pinAlias :: String
 } deriving (Show, Read)
 
+instance Eq Pin where
+    a == b = pinAlias a == pinAlias b
+
 -- this is a function in case we want to add hashing
 makePin :: FilePath -> Int -> String -> Pin
 makePin f p s = Pin f p s
@@ -42,6 +48,7 @@ protoPin = "(>"
 test = Pin "C://Users//sjdutch//Desktop//aa_outstanding.txt" 4 "test"
 test2 = Pin "C://Users//sjdutch//Desktop//aa_outstanding.txt" 31 "burden"
 test3 = Pin "C://Users//sjdutch//Desktop//aa_outstanding.txt" 11 "mostly"
+dropMe = Pin "" 1 "muse"
 
 showPin :: Pin -> IO String
 showPin t = printPin t $ openPin t
@@ -72,7 +79,7 @@ scanFile = fmap scanContents . getFileContents
 getFileContents :: FilePath -> IO [String]
 getFileContents = fmap lines . readFile
 
-savePin :: Pin -> IO()
+savePin :: Pin -> IO ()
 savePin p = do
             pins <- openFile "pin.pin" AppendMode
             hPutStrLn pins $ show p
@@ -83,17 +90,26 @@ readPins :: IO [String] -> IO [Pin]
 readPins = fmap (map read)
 
 findPin :: String -> FilePath -> IO [Pin]
---findPin "" _ = IO []
---findPin _ "" = IO []
 findPin a f = fmap (filter (matchAlias a)) (readPins $ getFileContents f)
 
 matchAlias :: String -> Pin -> Bool
 matchAlias a p = (pinAlias p) == a
 
-testFile = "C://Users//sjdutch//Desktop//aa_more.txt"
-testFile2 = "C://Users//sjdutch//Desktop//aa_524.txt"
+dropPin :: FilePath -> Pin -> IO ()
+dropPin f p = do
+                tmp <- copyToTemp f
+                c <- readPins $ getFileContents tmp
+                let d = filter (\x -> x /= p) c
+                writeFile f $ unlines $ map show d
+                removeFile tmp
 
--- Should a pin be like (alias)flag1,flag2,flag3>
+copyToTemp :: FilePath -> IO FilePath
+copyToTemp f = do
+                (tmpFile, tmpHand) <- openTempFile "." f
+                hClose tmpHand
+                cons <- readFile f
+                writeFile tmpFile cons
+                return tmpFile
 
 -- commands
 -- scan file = reads a file, looks for (> and shows the user the lines
@@ -120,7 +136,11 @@ main = do
 
 ---fmap (map putStrLn) $ getArgs
 
-data PinCommand = CommandList | CommandShow {cmdPinAlias :: [String] } | CommandScan { scanPath :: FilePath, scanFlags :: [String] } | CommandHelp | CommandQuit deriving (Show)
+data PinCommand = CommandList | CommandShow {cmdPinAlias :: [String] } | 
+    CommandScan { scanPath :: FilePath, scanFlags :: [String] } | CommandHelp | 
+    CommandQuit | CommandDelete { delPin :: String} | CommandRename {oldPin :: String, newPin :: String}
+    deriving (Show)
+
 type ScanArgs = String
 
 pad :: String -> String
@@ -171,10 +191,14 @@ cmdScan f (x:xs) = putStrLn "Scanning args not implemented."
 pinFromFile :: FilePath -> IO ()
 pinFromFile f = do 
                 p <- scanFile f
+                -- what if we match the list of found pins against known pins
                 case length p of
                     0 -> putStrLn "No pins found."
                     otherwise -> do
                                     putStrLn $ show (length p) ++ " pins found. Enter an alias."
+                                    -- here's the current place to short-circut the creation of a pin if it already exists.
+                                    -- but, should the user be notified that pins aready exist in the scan file?
+                                    --newPin <- promptForAlias f p 
                                     mapM_ (>>= savePin) $ map (promptForAlias f) p
 
 promptForAlias :: FilePath -> Int -> IO Pin
@@ -184,15 +208,50 @@ promptForAlias f l =
     getLine >>= 
     (\alias -> return $ makePin f l alias)
 
+-- TODO this needs to be used on the other read functions
 getLineFromFile :: FilePath -> Int -> IO String
 getLineFromFile f l = do
                 cnts <- readFile f
                 return ((lines $ cnts) !! l)
 
+
 stripNewLine :: String -> String
 stripNewLine = filter (/= '\n')
 
 cmdHelp = putStrLn "pin is a utility which allows you to put structured metadata (pins) \nin text files."
+
+cmdDel :: String -> FilePath -> IO ()
+cmdDel "" _ = putStrLn "Please name the pin to delete."
+cmdDel p f = do
+                tmp <- copyToTemp f
+                ps <- findPin p tmp
+                delete f ps 
+                -- TODO what to about removing temp files? ) >> (removeFile tmp)
+
+delete :: FilePath -> [Pin] -> IO ()
+delete f (x:[]) = dropPin f x
+delete f (x:xs) = delConfrim where
+                        delConfrim = confirm yesDeleteAll noDeleteAll $ "Multiple pins exist with the alias '" ++ (pinAlias x) ++ "'. Delete all?"
+                        onDelYes = dropPin f x
+                        onDelNo  = putStrLn "Deletion canceled."
+                        yesDeleteAll = Confirm onDelYes "Y"
+                        noDeleteAll =  Confirm onDelNo  "N"
+
+-- TODO watch out! this has been hard-coded to work with the file structure, pinAlias = "lastly"}
+-- TODO what to do about the remove file?
+cmdRename :: FilePath -> String -> String -> IO ()
+cmdRename f old new = do
+                        tmp <- copyToTemp f
+                        cnt <- getFileContents tmp
+                        --removeFile tmp
+                        writeFile f $ unlines $ map (rename . words) cnt where
+                            rename line = intercalate " " $ replace ("\"" ++ old ++ "\"}") ("\"" ++ new ++ "\"}") line
+                        
+replace :: Eq a => a -> a -> [a] -> [a]
+replace _ _ [] = []
+replace old new (x:xs) = case x == old of
+                            True -> new : replace old new xs
+                            False -> x : replace old new xs
 
 run :: Maybe PinCommand -> IO ()
 run (Just CommandList)          = cmdList "pin.pin"
@@ -200,6 +259,8 @@ run (Just (CommandScan f a))    = cmdScan f a
 run (Just CommandQuit)          = cmdQuit
 run (Just CommandHelp)          = cmdHelp
 run (Just (CommandShow p))      = cmdShow p
+run (Just (CommandDelete p))    = cmdDel p "pin.pin"
+run (Just (CommandRename o n)) = cmdRename "pin.pin" o n
 run Nothing                     = cmdQuit
 
 parseArgs :: [String] -> Maybe PinCommand
@@ -210,6 +271,8 @@ parseArgs (x:xs) = case x of
                     "show"  -> Just (CommandShow xs)
                     "scan" -> makeScan xs
                     "help" -> Just CommandHelp
+                    "del"  -> makeDel xs
+                    "alias"-> makeRename xs
                     -- TODO need some kind of settings, file types, remove the pins on scan
                     otherwise -> Nothing
 
@@ -223,10 +286,17 @@ makeScan :: [String] -> Maybe PinCommand
 makeScan [] = Nothing
 makeScan (x:xs) = Just $ CommandScan x xs
 
+makeDel :: [String] -> Maybe PinCommand
+makeDel [] = Nothing
+makeDel (x:xs) = Just $ CommandDelete x
+
+makeRename :: [String] -> Maybe PinCommand
+makeRename [] = Nothing
+makeRename (x:y:xs) = Just $ CommandRename x y
 -- File Checkss
 
 -- 1. In same location.
-checkFile
+--checkFile
 
 
 -- 2. File hash mismatch
@@ -235,3 +305,48 @@ checkFile
 
 -- All checks will be performed and reported.
 
+c = confirm yes no "Do you like babies?"
+
+onYes = putStrLn "You answered yes."
+onNo  = putStrLn "You said no."
+yes = Confirm onYes "Y"
+no =  Confirm onNo "N"
+
+data Confirm = Confirm {
+    confirmAction :: IO (),
+    confirmResponse :: ConfirmResponse 
+    } 
+
+type ConfirmMsg = String
+type ConfirmResponse = String
+
+-- this is interesting. the case expession didn't work to define proc, but nested if/then does.
+confirm :: Confirm -> Confirm -> ConfirmMsg -> IO ()
+confirm yes no msg = 
+                     let y = confirmResponse yes 
+                         n = confirmResponse no in
+                            putStrLn (msg ++ " " ++ y ++ "/" ++ n) >>
+                            getLine >>= proc where 
+                                    proc res =
+                                        if res == (confirmResponse yes) then
+                                            confirmAction yes
+                                        else
+                                            if res == (confirmResponse no) then
+                                                confirmAction no
+                                            else
+                                                confirm yes no msg
+
+tryParse s = let r = parseRes yes no s in
+             case r of 
+                Nothing -> putStrLn "Nothing"
+                Just c -> confirmAction c
+
+parseRes :: Confirm -> Confirm -> String -> Maybe Confirm
+parseRes confirmYes confirmNo response =
+    if (confirmResponse confirmYes) == response then
+        Just confirmYes
+    else
+        if (confirmResponse confirmNo) == response then
+            Just confirmNo
+        else
+            Nothing
