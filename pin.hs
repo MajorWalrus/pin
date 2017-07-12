@@ -1,54 +1,100 @@
 -- pin.hs
 
 {-
-    needs hashing of file and line
-    last access of pin
-    date pinned
-    .pin file needs a home
     stack
     quickcheck
+    switch to Data.Text - is this needed? using temp files is working now.
+    hlint
+    seperate code into modules
+    
     exception (IO) handling
     pre-existing pins
-        - check same alias
-        - check same file/hash
-    warnings of changes to file or line
-    new command "check" which looks for changed files, lines, or missing files in all pins
-        - use check interally before showing pin, and when listing pins
+    remove the protopin from the line when creating new pin
+    allow user to update the pinPath when a file moves?
     list formatting - make the pins display fixed width
-    new command "show -f " which takes a file and shows all the pins in that file
-    DONE new command "remove" tp delete a pin
-    DONE new command "rename" to rename a pin
--}
+    displaying known pins should check the hash of the file and the line
+        if the pin has moved to a newline, but the hash has not changed, then
+        just update the pin point
+    display UTC time as local time
 
+    commands
+    "show -f " which takes a file and shows all the pins in that file
+    scan file = reads a file, looks for (> and shows the user the lines
+      scan file should have flags to ignore or replace known pins
+      scan folder = above, but for all files in a folder
+      scan folder recursive = above, but for all sub-folders
+      scan here = scans the current directory use System.Directory.getCurrentDirectory
+    output for the above should be a list of pins with the first 40 chars of the line, the file, the path
+    list = list all pins [this should have sorting & filtering]
+    list /a = list all pins with more data
+    
+    DONE
+     new command "remove" tp delete a pin
+     new command "rename" to rename a pin
+     warnings of changes to file or line
+     new command "check" which looks for changed files, lines, or missing files in all pins
+        - use check interally before showing pin, and when listing pins
+     needs hashing of file and line
+     date pinned
+     .pin file needs a home => will be in the same folder as the executable
+
+    DEFER
+      read = reads a file and shows the user the contents ???? really?
+-}
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 import Data.List (findIndices, intercalate)
 import System.IO
 import System.Environment
 import System.Exit
-import System.Directory (doesDirectoryExist, doesFileExist, removeFile)
+import System.Directory (doesDirectoryExist, doesFileExist, removeFile, getModificationTime, getDirectoryContents)
+import Data.Time(getCurrentTime, UTCTime)
+import Data.Time.Format (formatTime, defaultTimeLocale)
 
 --import Options.Applicative
 --import System.Console.ANSI as ANSI
 
+import "cryptonite" Crypto.Hash (Digest, hash)
+import Crypto.Hash.Algorithms (SHA256(..))
+import Data.ByteString.Char8 as C8 (pack)
+
+hashString :: String -> Digest SHA256
+hashString = hash . C8.pack
+
+hashFile :: FilePath -> IO String
+hashFile f = fmap (show . hashString) $ readFile f
+
+compareUTC :: IO UTCTime -> IO UTCTime -> IO Bool
+compareUTC a b = do 
+                    a' <- a
+                    b' <- b
+                    return $ a' == b'
+
 data Pin = Pin {
     pinPath :: FilePath,
     pinPoint :: Int,
-    pinAlias :: String
+    pinAlias :: String,
+    pinLineHash :: String,
+    pinStoreTime :: UTCTime,
+    pinFileHash :: String,
+    pinFileTime :: UTCTime
 } deriving (Show, Read)
 
 instance Eq Pin where
     a == b = pinAlias a == pinAlias b
 
--- this is a function in case we want to add hashing
-makePin :: FilePath -> Int -> String -> Pin
-makePin f p s = Pin f p s
+makePin :: FilePath -> Int -> String -> IO Pin
+makePin f p s = do
+                    curTime <- getCurrentTime
+                    fileMod <- getModificationTime f
+                    cnts <- readFile f
+                    let lineHash = show $ hashString $ (lines $ cnts) !! p
+                    let fileHash = show $ hashString cnts
+                    return $ Pin f p s lineHash curTime fileHash fileMod
 
 protoPin = "(>"
-
-test = Pin "C://Users//sjdutch//Desktop//aa_outstanding.txt" 4 "test"
-test2 = Pin "C://Users//sjdutch//Desktop//aa_outstanding.txt" 31 "burden"
-test3 = Pin "C://Users//sjdutch//Desktop//aa_outstanding.txt" 11 "mostly"
-dropMe = Pin "" 1 "muse"
+tempPattern = "~_"
 
 showPin :: Pin -> IO String
 showPin t = printPin t $ openPin t
@@ -105,30 +151,18 @@ dropPin f p = do
 
 copyToTemp :: FilePath -> IO FilePath
 copyToTemp f = do
-                (tmpFile, tmpHand) <- openTempFile "." f
+                (tmpFile, tmpHand) <- openTempFile "." (tempPattern ++ f)
                 hClose tmpHand
                 cons <- readFile f
                 writeFile tmpFile cons
                 return tmpFile
 
--- commands
--- scan file = reads a file, looks for (> and shows the user the lines
--- scan file should have flags to ignore or replace known pins
--- scan folder = above, but for all files in a folder
--- scan folder recursive = above, but for all sub-folders
--- scan here = scans the current directory use System.Directory.getCurrentDirectory
--- output for the above should be a list of pins with the first 40 chars of the line, the file, the path
--- read = reads a file and shows the user the contents ???? really?
--- list = list all pins [this should have sorting & filtering]
--- list /a = list all pins with more data
---    displaying known pins should check the hash of the file and the line
---    if the pin has moved to a newline, but the hash has not changed, then
---    just update the pin point
--- pin "<alias>" show the pin detail
 
 main = do
     --allpins
+    cleanUpTemps "."
     (fmap parseArgs $ getArgs) >>= run
+    
     --cmd <- fmap parseArgs $ getArgs
     --run cmd
     --getProgName >>= print
@@ -138,7 +172,8 @@ main = do
 
 data PinCommand = CommandList | CommandShow {cmdPinAlias :: [String] } | 
     CommandScan { scanPath :: FilePath, scanFlags :: [String] } | CommandHelp | 
-    CommandQuit | CommandDelete { delPin :: String} | CommandRename {oldPin :: String, newPin :: String}
+    CommandQuit | CommandDelete { delPin :: String} | CommandRename {oldPin :: String, newPin :: String} |
+    CommandUpdate { updatePin :: String }
     deriving (Show)
 
 type ScanArgs = String
@@ -150,10 +185,6 @@ pad s = " " ++ s ++ " "
 displayPin :: Pin -> String
 displayPin p = (pinAlias p) ++ (pad protoPin) ++ (pinPath p)
 
-tests = [test, test2, test3]
-
-displayPins = mapM_ (putStrLn . displayPin) tests
-
 cmdList :: FilePath -> IO ()
 cmdList f = (readPins $ getFileContents f) >>= mapM_ (putStrLn . displayPin)
 
@@ -163,16 +194,39 @@ cmdShow = mapM_ (cmdShow' "pin.pin")
 cmdShow' :: FilePath -> String -> IO ()
 cmdShow' f a = do
             pins <- findPin a f
-            mapM_ (>>= putStrLn) (map showPin pins)
+            let okpins = map pinOk pins
+            mapM_ (>>= putStrLn) (map (>>= buildShowPin) okpins)
 {-
     The above is the shortest I can make this function. The types don't line up, so I can't figure out how 
     to do it in one line.
         findPin :: String -> FilePath -> IO [Pin]
         map showPin :: [Pin] -> [IO String]
 
-    The second line means, "Call showPin on every pin that was found. Then bind the result to putstring 
+    The second line means, "Call buildShowPin on every pin that was found. Then bind the result to putstring 
     by calling that function for every string and throwing away the resulting list."
 -}
+
+buildShowPin :: (Maybe Pin, IO String) -> IO String
+buildShowPin (Just p, s) = join (showPin p) s
+bulidShowPin (Nothing, s) = return s
+
+pinOk :: Pin -> IO (Maybe Pin, IO String)
+pinOk p = do
+            status <- check p
+            case status of
+                PinCheckSuccess      -> return ((Just p), return "") 
+                PinCheckFileModified -> return ((Just p), fmap ("\n    The file this pin points to has been modified." ++) $ join (pinPinnedTime p) (pinFileModTime p))
+                PinCheckLineModified -> return ((Just p), fmap ("\n    The line this pin points to has been modified." ++) $ join (pinPinnedTime p) (pinFileModTime p))
+                PinCheckFileNotFound -> return (Nothing, return "The file was moved or deleted.")
+
+pinPinnedTime :: Pin -> IO String
+pinPinnedTime p =  return $ "\n      Pinned:        " ++ (formatPinTime p)
+
+pinFileModTime :: Pin -> IO String
+pinFileModTime p = fmap ("\n      File Changed:  " ++) $ fmap pinTimeFormat $ getModificationTime $ pinPath p
+
+join :: IO String -> IO String -> IO String
+join s1 s2 = (++) <$> s1 <*> s2
 
 cmdQuit = return () --exitSuccess?
 
@@ -206,7 +260,7 @@ promptForAlias f l =
     getLineFromFile f l >>=
     (\line -> putStrLn $ "   File: " ++ f ++ "\n   Line: " ++ (stripNewLine line)) >>
     getLine >>= 
-    (\alias -> return $ makePin f l alias)
+    (\alias -> makePin f l alias)
 
 -- TODO this needs to be used on the other read functions
 getLineFromFile :: FilePath -> Int -> IO String
@@ -226,7 +280,6 @@ cmdDel p f = do
                 tmp <- copyToTemp f
                 ps <- findPin p tmp
                 delete f ps 
-                -- TODO what to about removing temp files? ) >> (removeFile tmp)
 
 delete :: FilePath -> [Pin] -> IO ()
 delete f (x:[]) = dropPin f x
@@ -238,20 +291,39 @@ delete f (x:xs) = delConfrim where
                         noDeleteAll =  Confirm onDelNo  "N"
 
 -- TODO watch out! this has been hard-coded to work with the file structure, pinAlias = "lastly"}
--- TODO what to do about the remove file?
 cmdRename :: FilePath -> String -> String -> IO ()
-cmdRename f old new = do
+cmdRename f old new = updatePinFile f ("\"" ++ old ++ "\",") ("\"" ++ new ++ "\",")
+
+updatePinFile :: FilePath -> String -> String -> IO ()
+updatePinFile f old new = do
                         tmp <- copyToTemp f
                         cnt <- getFileContents tmp
-                        --removeFile tmp
-                        writeFile f $ unlines $ map (rename . words) cnt where
-                            rename line = intercalate " " $ replace ("\"" ++ old ++ "\"}") ("\"" ++ new ++ "\"}") line
-                        
+                        writeFile f $ unlines $ map (update . words) cnt where
+                            update line = intercalate " " $ replace old new line
+
 replace :: Eq a => a -> a -> [a] -> [a]
 replace _ _ [] = []
 replace old new (x:xs) = case x == old of
                             True -> new : replace old new xs
                             False -> x : replace old new xs
+
+-- Updating hashes is weird for files that are only one line. The file hash and the line hash are the same.
+cmdUpdateHashes :: FilePath -> String ->  IO ()
+cmdUpdateHashes f p = do 
+                        tmp <- copyToTemp f
+                        pins <- findPin p tmp
+                        mapM_ (updateHashes f) pins
+
+updateHashes :: FilePath -> Pin -> IO ()
+updateHashes f p = do 
+                let old_lh = pinLineHash p
+                let old_fh = pinFileHash p
+                cnts <- readFile $ pinPath p
+                let new_lh = show $ hashString $ (lines $ cnts) !! (pinPoint p)
+                let new_fh = (show . hashString) cnts
+                updatePinFile f ("\"" ++ old_lh ++ "\",") ("\"" ++ new_lh ++ "\",")
+                updatePinFile f ("\"" ++ old_fh ++ "\",") ("\"" ++ new_fh ++ "\",")
+
 
 run :: Maybe PinCommand -> IO ()
 run (Just CommandList)          = cmdList "pin.pin"
@@ -260,7 +332,8 @@ run (Just CommandQuit)          = cmdQuit
 run (Just CommandHelp)          = cmdHelp
 run (Just (CommandShow p))      = cmdShow p
 run (Just (CommandDelete p))    = cmdDel p "pin.pin"
-run (Just (CommandRename o n)) = cmdRename "pin.pin" o n
+run (Just (CommandRename o n))  = cmdRename "pin.pin" o n
+run (Just ((CommandUpdate p)))  = cmdUpdateHashes "pin.pin" p
 run Nothing                     = cmdQuit
 
 parseArgs :: [String] -> Maybe PinCommand
@@ -268,11 +341,12 @@ parseArgs [] = Just CommandQuit
 parseArgs (x:xs) = case x of
                     "list" -> Just CommandList
                     "ls"   -> Just CommandList
-                    "show"  -> Just (CommandShow xs)
+                    "show" -> Just (CommandShow xs)
                     "scan" -> makeScan xs
                     "help" -> Just CommandHelp
                     "del"  -> makeDel xs
                     "alias"-> makeRename xs
+                    "update" -> makeUpdate xs
                     -- TODO need some kind of settings, file types, remove the pins on scan
                     otherwise -> Nothing
 
@@ -293,17 +367,68 @@ makeDel (x:xs) = Just $ CommandDelete x
 makeRename :: [String] -> Maybe PinCommand
 makeRename [] = Nothing
 makeRename (x:y:xs) = Just $ CommandRename x y
+
+makeUpdate :: [String] -> Maybe PinCommand
+makeUpdate [] = Nothing
+makeUpdate (x:xs) = Just $ CommandUpdate x
+
+check' :: String -> IO PinCheck
+check' p = do
+                    pins <- findPin p "pin.pin"
+                    let pin = head pins
+                    check pin
+
 -- File Checkss
-
 -- 1. In same location.
---checkFile
-
-
 -- 2. File hash mismatch
-
 -- 3. Line hash mismatch
-
 -- All checks will be performed and reported.
+data PinCheck = PinCheckSuccess | PinCheckFileNotFound | PinCheckFileModified | PinCheckLineModified deriving (Show)
+
+-- TODO need a way to update hashes so the user can acknowledge that a file has changed
+check :: Pin -> IO PinCheck
+check p = do
+            let f = pinPath p
+            fnd <- doesFileExist f
+            case fnd of
+                False -> return PinCheckFileNotFound
+                True  -> do
+                    cnts <- readFile f
+                    let lineHash = show $ hashString $ (lines $ cnts) !! (pinPoint p)
+                    case lineHash == (pinLineHash p) of
+                        False -> return PinCheckLineModified
+                        True  -> do
+                            fhash <- hashFile f
+                            case fhash == (pinFileHash p) of
+                                False -> return PinCheckFileModified
+                                True  -> return PinCheckSuccess
+
+-- Designed to be a short value that contains no spaces.
+-- For use mostly in system files. May not be useful for user-visible elements.
+timeStamp :: IO String
+timeStamp = do
+            utcTime <- getCurrentTime
+            return (formatTime defaultTimeLocale "%T,%F(%Z)" utcTime)
+
+formatPinTime :: Pin -> String
+formatPinTime = pinTimeFormat . pinStoreTime
+
+pinTimeFormat :: UTCTime -> String
+pinTimeFormat = (formatTime defaultTimeLocale "%T,%F(%Z)")
+
+-- TODO why can't this be one line?
+cleanUpTemps :: FilePath -> IO ()
+cleanUpTemps d = do
+                    files <- getDirectoryContents d
+                    mapM_ delIfTemp files
+                        -- FilePath -> IO ()  IO [FilePath]
+                        -- IO [FilePath -> IO ()]
+
+delIfTemp :: FilePath -> IO ()            
+delIfTemp f = if (take 2 f) == tempPattern then
+                removeFile f
+              else
+                return ()
 
 c = confirm yes no "Do you like babies?"
 
