@@ -10,7 +10,7 @@ module UI
 
 import Data.List (intercalate)
 import System.Directory (getModificationTime)
-import Pin (Pin(..), PinCheck(..), protoPin, readPins, findPin, showPin, checkPin, dropPin, scanFile, savePin, makePin, formatPinTime, check)
+import Pin (Pin(..), PinCheck(..), protoPin, readPins, findPin, showPin, dropPin, scanFile, savePin, makePin, formatPinTime, check)
 import Util (copyToTemp, replace, hashString, pinTimeFormat, getFileContents)
 import Confirm
 
@@ -48,7 +48,8 @@ cmdShow' f a = do
 
 buildShowPin :: (Maybe Pin, IO String) -> IO String
 buildShowPin (Just p, s) = join (showPin p) s
-bulidShowPin (Nothing, s) = return s
+buildShowPin (Nothing, s) = s
+--buildShowPin (Nothing, "") = return "Error retrieving pin."
 
 pinOk :: Pin -> IO (Maybe Pin, IO String)
 pinOk p = do
