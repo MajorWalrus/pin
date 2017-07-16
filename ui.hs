@@ -49,7 +49,6 @@ cmdShow' f a = do
 buildShowPin :: (Maybe Pin, IO String) -> IO String
 buildShowPin (Just p, s) = join (showPin p) s
 buildShowPin (Nothing, s) = s
---buildShowPin (Nothing, "") = return "Error retrieving pin."
 
 pinOk :: Pin -> IO (Maybe Pin, IO String)
 pinOk p = do
