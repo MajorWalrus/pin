@@ -19,7 +19,7 @@ main = do
 data PinCommand = CommandList | CommandShow {cmdPinAlias :: [String] } | 
     CommandScan { scanPath :: FilePath, scanFlags :: [String] } | CommandHelp | 
     CommandQuit | CommandDelete { delPin :: String} | CommandRename {oldPin :: String, newPin :: String} |
-    CommandUpdate { updatePin :: String }
+    CommandUpdate { updatePin :: String } | CommandDetail { detailPin :: String }
     deriving (Show)
 
 run :: Maybe PinCommand -> IO ()
@@ -31,6 +31,7 @@ run (Just (CommandShow p))      = cmdShow p
 run (Just (CommandDelete p))    = cmdDel p "pin.pin"
 run (Just (CommandRename o n))  = cmdRename "pin.pin" o n
 run (Just ((CommandUpdate p)))  = cmdUpdateHashes "pin.pin" p
+run (Just (CommandDetail p))    = cmdDetail "pin.pin" p
 run Nothing                     = cmdQuit
 
 parseArgs :: [String] -> Maybe PinCommand
@@ -44,6 +45,7 @@ parseArgs (x:xs) = case x of
                     "del"       -> makeDel xs
                     "alias"     -> makeRename xs
                     "update"    -> makeUpdate xs
+                    "detail"    -> makeDetail xs
                     -- TODO need some kind of settings, file types, remove the pins on scan
                     otherwise   -> Nothing
 
@@ -68,3 +70,7 @@ makeRename (x:y:xs) = Just $ CommandRename x y
 makeUpdate :: [String] -> Maybe PinCommand
 makeUpdate [] = Nothing
 makeUpdate (x:xs) = Just $ CommandUpdate x
+
+makeDetail :: [String] -> Maybe PinCommand
+makeDetail [] = Nothing
+makeDetail (x:xs) = Just $ CommandDetail x

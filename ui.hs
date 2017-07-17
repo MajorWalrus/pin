@@ -5,7 +5,7 @@
 
 module UI
     (
-       cmdList, cmdShow, cmdScan, cmdDel, cmdRename, cmdUpdateHashes, cmdHelp, cmdQuit
+       cmdList, cmdShow, cmdScan, cmdDel, cmdRename, cmdUpdateHashes, cmdHelp, cmdQuit, cmdDetail
     ) where
 
 import Data.List (intercalate)
@@ -163,6 +163,20 @@ updateHashes f p = do
                 let new_fh = (show . hashString) cnts
                 updatePinFile f ("\"" ++ old_lh ++ "\",") ("\"" ++ new_lh ++ "\",")
                 updatePinFile f ("\"" ++ old_fh ++ "\",") ("\"" ++ new_fh ++ "\",")
+
+cmdPoint :: String -> String -> IO ()
+cmdPoint p f = undefined
+
+-- detail
+
+cmdDetail :: FilePath -> String -> IO ()
+cmdDetail f p = do
+                pins <- findPin p f
+                let detes = map pinDetail pins
+                mapM_ putStrLn detes
+
+pinDetail :: Pin -> String
+pinDetail p = "Alias: " ++ (pinAlias p) ++ "\n    File: " ++ (pinPath p) ++ "\n    Line: " ++ (show $ pinPoint p) ++ "\n    Pinned: " ++ (formatPinTime p)
 
 -- help
 cmdHelp :: IO ()
