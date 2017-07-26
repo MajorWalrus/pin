@@ -48,7 +48,6 @@ parseArgs (x:xs) = case x of
                     "update"    -> makeUpdate xs
                     "detail"    -> makeDetail xs
                     "path"      -> makePath xs
-                    -- TODO need some kind of settings, file types, remove the pins on scan
                     otherwise   -> Nothing
 
 -- originally this was going to allow the user to 
