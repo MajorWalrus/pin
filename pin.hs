@@ -12,15 +12,13 @@ module Pin
 {-
     stack
     quickcheck
-    switch to Data.Text - is this needed? using temp files is working now.
     hlint
-    output colors with import System.Console.ANSI
-    seperate code into modules
     
-    exception (IO) handling
-    pre-existing pins
-    remove the protopin from the line when creating new pin
-    allow user to update the pinPath when a file moves?
+    exception (IO) handling of missing .pin file
+    
+    V2.0
+    need some kind of settings, file types, remove the pins on scan
+    output colors with import System.Console.ANSI
     list formatting - make the pins display fixed width
     displaying known pins should check the hash of the file and the line
         if the pin has moved to a newline, but the hash has not changed, then
@@ -47,9 +45,13 @@ module Pin
      needs hashing of file and line
      date pinned
      .pin file needs a home => will be in the same folder as the executable
+     allow user to update the pinPath when a file moves? => yep
 
     DEFER
       read = reads a file and shows the user the contents ???? really?
+      remove the protopin from the line when creating new pin
+      pre-existing pin
+      switch to Data.Text - is this needed? using temp files is working now.
 -}
 
 import Data.List (findIndices)
@@ -94,10 +96,6 @@ printPin :: Pin -> IO String -> IO String
 printPin t s = fmap (showAlias t) s
 
 showAlias t s = (pinAlias t) ++ ": " ++ s
-
--- need something to remove the protoPin from the string before displaying
---cleanAlias :: String -> String
---cleanAlias = dropWhile (\x -> x == protoPin) . words
 
 scanLine :: String -> Bool
 scanLine = elem protoPin . words

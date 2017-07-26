@@ -5,11 +5,11 @@
 
 module UI
     (
-       cmdList, cmdShow, cmdScan, cmdDel, cmdRename, cmdUpdateHashes, cmdHelp, cmdQuit, cmdDetail
+       cmdList, cmdShow, cmdScan, cmdDel, cmdRename, cmdUpdateHashes, cmdHelp, cmdQuit, cmdDetail, cmdPath, cleanPath
     ) where
 
 import Data.List (intercalate)
-import System.Directory (getModificationTime)
+import System.Directory (getModificationTime, doesFileExist)
 import Pin (Pin(..), PinCheck(..), protoPin, readPins, findPin, showPin, dropPin, scanFile, savePin, makePin, formatPinTime, check)
 import Util (copyToTemp, replace, hashString, pinTimeFormat, getFileContents)
 import Confirm
@@ -47,7 +47,7 @@ cmdShow' f a = do
 -}
 
 buildShowPin :: (Maybe Pin, IO String) -> IO String
-buildShowPin (Just p, s) = join (showPin p) s
+buildShowPin (Just p, s) = join (cleanPinInLine <$> showPin p) s
 buildShowPin (Nothing, s) = s
 
 pinOk :: Pin -> IO (Maybe Pin, IO String)
@@ -68,9 +68,15 @@ pinFileModTime p = fmap ("\n      File Changed:  " ++) $ fmap pinTimeFormat $ ge
 join :: IO String -> IO String -> IO String
 join s1 s2 = (++) <$> s1 <*> s2
 
-
+-- need something to remove the protoPin from the string before displaying
+cleanPinInLine :: String -> String
+cleanPinInLine = intercalate " " . filter (/= protoPin) . words
 
 -- scan
+
+data ScanOptions = RemovePin | LeavePin
+
+
 
 {-
     scanning one file
@@ -81,7 +87,7 @@ join s1 s2 = (++) <$> s1 <*> s2
 
 -- TODO need to handle pins that already exist
 cmdScan :: FilePath -> [String] -> IO ()
-cmdScan f [] = pinFromFile f
+cmdScan f [] = pinFromFile $ cleanPath f
 cmdScan f (x:xs) = putStrLn "Scanning args not implemented."
 
 pinFromFile :: FilePath -> IO ()
@@ -95,7 +101,8 @@ pinFromFile f = do
                                     -- here's the current place to short-circut the creation of a pin if it already exists.
                                     -- but, should the user be notified that pins aready exist in the scan file?
                                     --newPin <- promptForAlias f p 
-                                    mapM_ (>>= savePin) $ map (promptForAlias f) p
+                                    mapM_ (>>= savePin) $ map (promptForAlias f) p -- TODO promptForAliaas should just return IO string
+                                    
 
 promptForAlias :: FilePath -> Int -> IO Pin
 promptForAlias f l = 
@@ -113,6 +120,15 @@ getLineFromFile f l = do
 
 stripNewLine :: String -> String
 stripNewLine = filter (/= '\n')
+
+--- Future
+
+
+removePinFromLine :: FilePath -> Int -> IO ()
+removePinFromLine f l = do
+                oldLine <- getLineFromFile f l
+                let newLine = cleanPinInLine oldLine
+                updatePinFile f oldLine newLine
 
 -- delete
 
@@ -164,8 +180,32 @@ updateHashes f p = do
                 updatePinFile f ("\"" ++ old_lh ++ "\",") ("\"" ++ new_lh ++ "\",")
                 updatePinFile f ("\"" ++ old_fh ++ "\",") ("\"" ++ new_fh ++ "\",")
 
-cmdPoint :: String -> String -> IO ()
-cmdPoint p f = undefined
+-- path
+
+cmdPath :: FilePath -> String -> FilePath -> IO ()
+cmdPath f p n = do
+                tmp <- copyToTemp f
+                pins <- findPin p tmp
+                case pins of 
+                    (p:[]) -> mapM_ (updatePath f n) pins
+                    (p:ps) -> pathConfrim where
+                        pathConfrim = confirm yesPathAll noPathAll $ "Multiple pins exist with the alias '" ++ (pinAlias p) ++ "'. Repath all to " ++ n ++ "?"
+                        onPathYes = mapM_ (updatePath f n) pins
+                        onPathNo  = putStrLn "Repathing canceled."
+                        yesPathAll = Confirm onPathYes "Y"
+                        noPathAll =  Confirm onPathNo  "N"
+
+updatePath :: FilePath -> FilePath -> Pin -> IO ()
+updatePath f n p = do
+                    let old_path = pinPath p
+                    let cp = cleanPath n
+                    fnd <- doesFileExist cp
+                    case fnd of
+                        True -> updatePinFile f ("\"" ++ old_path ++ "\",") ("\"" ++ n ++ "\",")
+                        False -> putStrLn $ "The file " ++ n ++ " could not be found."
+
+cleanPath :: String -> String
+cleanPath =  map (\c -> if c == '\\' then '/'; else c)
 
 -- detail
 
