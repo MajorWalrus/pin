@@ -14,8 +14,8 @@ module Pin
     quickcheck
     hlint
     
-    exception (IO) handling of missing .pin file
-    
+    display time in local
+
     V2.0
     need some kind of settings, file types, remove the pins on scan
     output colors with import System.Console.ANSI
@@ -46,6 +46,7 @@ module Pin
      date pinned
      .pin file needs a home => will be in the same folder as the executable
      allow user to update the pinPath when a file moves? => yep
+     exception (IO) handling of missing .pin file
 
     DEFER
       read = reads a file and shows the user the contents ???? really?

@@ -9,11 +9,13 @@ module Main
     ) where
 
 import System.Environment (getArgs)
+import System.Directory (doesFileExist)
 import UI
 import Util(cleanUpTemps)
 
 main = do
     cleanUpTemps "."
+    ensurePin "pin.pin"
     (fmap parseArgs $ getArgs) >>= run
 
 data PinCommand = CommandList | CommandShow {cmdPinAlias :: [String] } | 
@@ -27,13 +29,21 @@ run (Just CommandList)          = cmdList "pin.pin"
 run (Just (CommandScan f a))    = cmdScan f a
 run (Just CommandQuit)          = cmdQuit
 run (Just CommandHelp)          = cmdHelp
-run (Just (CommandShow p))      = cmdShow p
+run (Just (CommandShow p))      = cmdShow p -- WATCH OUT "pin.pin" is buried in the command
 run (Just (CommandDelete p))    = cmdDel p "pin.pin"
 run (Just (CommandRename o n))  = cmdRename "pin.pin" o n
 run (Just ((CommandUpdate p)))  = cmdUpdateHashes "pin.pin" p
 run (Just (CommandDetail p))    = cmdDetail "pin.pin" p
 run (Just (CommandPath p f))    = cmdPath "pin.pin" p f
 run Nothing                     = cmdQuit
+
+ensurePin :: String -> IO ()
+ensurePin f = do
+                fnd <- doesFileExist f
+                if fnd then
+                    return ()
+                else
+                    writeFile f ""
 
 parseArgs :: [String] -> Maybe PinCommand
 parseArgs [] = Just CommandQuit
