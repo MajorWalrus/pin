@@ -8,7 +8,7 @@
 
 module Util
     (
-        hashString, hashFile, compareUTC, timeStamp, pinTimeFormat, copyToTemp, cleanUpTemps, replace, tempPattern,
+        hashString, hashFile, compareUTC, timeStamp, pinTimeFormat, pinTimeFormat', copyToTemp, cleanUpTemps, replace, tempPattern,
         getFileContents
     ) where
 
@@ -16,12 +16,13 @@ module Util
 import "cryptonite" Crypto.Hash (Digest, hash)
 import Crypto.Hash.Algorithms (SHA256(..))
 import Data.ByteString.Char8 as C8 (pack)
-import Data.Time(getCurrentTime, UTCTime)
+import Data.Time(getCurrentTime, getZonedTime, UTCTime, ZonedTime(..), utcToZonedTime)
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import System.Directory (getDirectoryContents, removeFile)
 import System.IO (hClose, openTempFile)
 
 tempPattern = "~_"
+timeFmt = "%m/%d/%Y %I:%M %p"
 
 getFileContents :: FilePath -> IO [String]
 getFileContents = fmap lines . readFile
@@ -43,12 +44,18 @@ compareUTC a b = do
 timeStamp :: IO String
 timeStamp = do
             utcTime <- getCurrentTime
-            return (formatTime defaultTimeLocale "%T,%F(%Z)" utcTime)
+            return (formatTime defaultTimeLocale timeFmt utcTime)
 
+
+pinTimeFormat' :: UTCTime -> IO String
+pinTimeFormat' u = do
+                    t <- getZonedTime
+                    let ZonedTime _ tz = t
+                    return (formatTime defaultTimeLocale timeFmt $ utcToZonedTime tz u)
 
 
 pinTimeFormat :: UTCTime -> String
-pinTimeFormat = (formatTime defaultTimeLocale "%T,%F(%Z)")
+pinTimeFormat = (formatTime defaultTimeLocale timeFmt)
 
 
 copyToTemp :: FilePath -> IO FilePath

@@ -11,7 +11,7 @@ module UI
 import Data.List (intercalate)
 import System.Directory (getModificationTime, doesFileExist)
 import Pin (Pin(..), PinCheck(..), protoPin, readPins, findPin, showPin, dropPin, scanFile, savePin, makePin, formatPinTime, check)
-import Util (copyToTemp, replace, hashString, pinTimeFormat, getFileContents)
+import Util (copyToTemp, replace, hashString, pinTimeFormat, pinTimeFormat', getFileContents)
 import Confirm
 
 -- list
@@ -60,10 +60,12 @@ pinOk p = do
                 PinCheckFileNotFound -> return (Nothing, return "The file was moved or deleted.")
 
 pinPinnedTime :: Pin -> IO String
-pinPinnedTime p =  return $ "\n      Pinned:        " ++ (formatPinTime p)
+pinPinnedTime p = fmap ("\n      Pinned:        " ++) $ formatPinTime p
+-- sting ++ io string -> IO string
 
 pinFileModTime :: Pin -> IO String
-pinFileModTime p = fmap ("\n      File Changed:  " ++) $ fmap pinTimeFormat $ getModificationTime $ pinPath p
+pinFileModTime p = fmap ("\n      File Changed:  " ++) $ (getModificationTime $ pinPath p) >>= pinTimeFormat'
+
 
 join :: IO String -> IO String -> IO String
 join s1 s2 = (++) <$> s1 <*> s2
@@ -213,10 +215,10 @@ cmdDetail :: FilePath -> String -> IO ()
 cmdDetail f p = do
                 pins <- findPin p f
                 let detes = map pinDetail pins
-                mapM_ putStrLn detes
+                mapM_ (>>= putStrLn) detes 
 
-pinDetail :: Pin -> String
-pinDetail p = "Alias: " ++ (pinAlias p) ++ "\n    File: " ++ (pinPath p) ++ "\n    Line: " ++ (show $ pinPoint p) ++ "\n    Pinned: " ++ (formatPinTime p)
+pinDetail :: Pin -> IO String
+pinDetail p = fmap (("Alias: " ++ (pinAlias p) ++ "\n    File: " ++ (pinPath p) ++ "\n    Line: " ++ (show $ pinPoint p) ++ "\n    Pinned: ") ++) $ formatPinTime p
 
 -- help
 cmdHelp :: IO ()

@@ -59,7 +59,7 @@ import Data.List (findIndices)
 import Data.Time(getCurrentTime, UTCTime)
 import System.Directory (doesFileExist, getModificationTime, removeFile)
 import System.IO(openFile, IOMode(AppendMode), hPutStrLn, hClose)
-import Util (hashString, hashFile, copyToTemp, pinTimeFormat, getFileContents)
+import Util (hashString, hashFile, copyToTemp, pinTimeFormat, getFileContents, pinTimeFormat')
 
 data Pin = Pin {
     pinPath :: FilePath,
@@ -137,8 +137,8 @@ checkPin p = do
                     let pin = head pins
                     check pin
 
-formatPinTime :: Pin -> String
-formatPinTime = pinTimeFormat . pinStoreTime
+formatPinTime :: Pin -> IO String
+formatPinTime = pinTimeFormat' . pinStoreTime
 
 -- File Checkss
 -- 1. In same location.
