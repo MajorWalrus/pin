@@ -18,10 +18,11 @@ import Crypto.Hash.Algorithms (SHA256(..))
 import Data.ByteString.Char8 as C8 (pack)
 import Data.Time(getCurrentTime, getZonedTime, UTCTime, ZonedTime(..), utcToZonedTime)
 import Data.Time.Format (formatTime, defaultTimeLocale)
-import System.Directory (getDirectoryContents, removeFile)
+import System.Directory (getDirectoryContents, removeFile, getTemporaryDirectory)
 import System.IO (hClose, openTempFile)
+import System.FilePath (takeDirectory, takeFileName, addTrailingPathSeparator)
 
-tempPattern = "~_"
+tempPattern = "pin~_"
 timeFmt = "%m/%d/%Y %I:%M %p"
 
 getFileContents :: FilePath -> IO [String]
@@ -60,7 +61,8 @@ pinTimeFormat = (formatTime defaultTimeLocale timeFmt)
 
 copyToTemp :: FilePath -> IO FilePath
 copyToTemp f = do
-                (tmpFile, tmpHand) <- openTempFile "." (tempPattern ++ f)
+                tmpFld <- getTemporaryDirectory
+                (tmpFile, tmpHand) <- openTempFile tmpFld (tempPattern ++ (takeFileName f))
                 hClose tmpHand
                 cons <- readFile f
                 writeFile tmpFile cons
@@ -70,13 +72,13 @@ copyToTemp f = do
 cleanUpTemps :: FilePath -> IO ()
 cleanUpTemps d = do
                     files <- getDirectoryContents d
-                    mapM_ delIfTemp files
+                    mapM_ (delIfTemp d) files
                         -- FilePath -> IO ()  IO [FilePath]
                         -- IO [FilePath -> IO ()]
 
-delIfTemp :: FilePath -> IO ()            
-delIfTemp f = if (take 2 f) == tempPattern then
-                removeFile f
+delIfTemp :: FilePath -> FilePath -> IO ()            
+delIfTemp d f = if (take 5 f) == tempPattern then
+                removeFile $ (addTrailingPathSeparator d) ++ f
               else
                 return ()
 

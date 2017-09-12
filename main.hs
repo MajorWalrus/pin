@@ -9,13 +9,13 @@ module Main
     ) where
 
 import System.Environment (getArgs)
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, getAppUserDataDirectory, getTemporaryDirectory)
 import UI
 import Util(cleanUpTemps)
 
 main = do
-    cleanUpTemps "."
-    ensurePin "pin.pin"
+    getTemporaryDirectory >>= cleanUpTemps
+    pinFile "pin.pin" >>= ensurePin
     (fmap parseArgs $ getArgs) >>= run
 
 data PinCommand = CommandList | CommandShow {cmdPinAlias :: [String] } | 
@@ -25,17 +25,20 @@ data PinCommand = CommandList | CommandShow {cmdPinAlias :: [String] } |
     deriving (Show)
 
 run :: Maybe PinCommand -> IO ()
-run (Just CommandList)          = cmdList "pin.pin"
-run (Just (CommandScan f a))    = cmdScan f a
+run (Just CommandList)          = pinFile "pin.pin" >>= cmdList              -- good
+run (Just (CommandScan f a))    = pinFile "pin.pin" >>= cmdScan f a -- WHERE DOES pin.pin come from here?
 run (Just CommandQuit)          = cmdQuit
 run (Just CommandHelp)          = cmdHelp
-run (Just (CommandShow p))      = cmdShow p -- WATCH OUT "pin.pin" is buried in the command
-run (Just (CommandDelete p))    = cmdDel p "pin.pin"
-run (Just (CommandRename o n))  = cmdRename "pin.pin" o n
-run (Just ((CommandUpdate p)))  = cmdUpdateHashes "pin.pin" p
-run (Just (CommandDetail p))    = cmdDetail "pin.pin" p
-run (Just (CommandPath p f))    = cmdPath "pin.pin" p f
-run Nothing                     = cmdQuit
+run (Just (CommandShow p))      = pinFile "pin.pin" >>= cmdShow p           -- good
+run (Just (CommandDelete p))    = pinFile "pin.pin" >>= cmdDel p            -- good
+run (Just (CommandRename o n))  = pinFile "pin.pin" >>= cmdRename o n       -- good
+run (Just ((CommandUpdate p)))  = pinFile "pin.pin" >>= cmdUpdateHashes p   -- good    
+run (Just (CommandDetail p))    = pinFile "pin.pin" >>= cmdDetail p         -- good
+run (Just (CommandPath p f))    = pinFile "pin.pin" >>= cmdPath p f         -- good
+run Nothing                     = cmdQuit                                   -- good
+
+pinFile :: String -> IO FilePath
+pinFile f = fmap (++ "\\" ++ f) $ getAppUserDataDirectory "pin"
 
 ensurePin :: String -> IO ()
 ensurePin f = do

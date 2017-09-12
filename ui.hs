@@ -28,8 +28,8 @@ pad s = " " ++ s ++ " "
 
 -- show
 
-cmdShow :: [String] -> IO ()
-cmdShow = mapM_ (cmdShow' "pin.pin")
+cmdShow :: [String] -> FilePath -> IO ()
+cmdShow ps f = mapM_ (cmdShow' f) ps
 
 cmdShow' :: FilePath -> String -> IO ()
 cmdShow' f a = do
@@ -88,13 +88,13 @@ data ScanOptions = RemovePin | LeavePin
 -}
 
 -- TODO need to handle pins that already exist
-cmdScan :: FilePath -> [String] -> IO ()
-cmdScan f [] = pinFromFile $ cleanPath f
-cmdScan f (x:xs) = putStrLn "Scanning args not implemented."
+cmdScan :: FilePath -> [String] -> FilePath -> IO ()
+cmdScan f [] ps = pinFromFile (cleanPath f) ps
+cmdScan f (x:xs) ps = putStrLn "Scanning args not implemented."
 
-pinFromFile :: FilePath -> IO ()
-pinFromFile f = do 
-                p <- scanFile f
+pinFromFile :: FilePath -> FilePath -> IO ()
+pinFromFile f ps = do 
+                p <- scanFile f -- TODO this should return a Maybe because if the file is not found, we get an exception
                 -- what if we match the list of found pins against known pins
                 case length p of
                     0 -> putStrLn "No pins found."
@@ -103,7 +103,7 @@ pinFromFile f = do
                                     -- here's the current place to short-circut the creation of a pin if it already exists.
                                     -- but, should the user be notified that pins aready exist in the scan file?
                                     --newPin <- promptForAlias f p 
-                                    mapM_ (>>= savePin) $ map (promptForAlias f) p -- TODO promptForAliaas should just return IO string
+                                    mapM_ (>>= savePin ps) $ map (promptForAlias f) p -- TODO promptForAliaas should just return IO string
                                     
 
 promptForAlias :: FilePath -> Int -> IO Pin
@@ -153,8 +153,8 @@ delete f (x:xs) = delConfrim where
 -- rename
 
 -- TODO watch out! this has been hard-coded to work with the file structure, pinAlias = "lastly"}
-cmdRename :: FilePath -> String -> String -> IO ()
-cmdRename f old new = updatePinFile f ("\"" ++ old ++ "\",") ("\"" ++ new ++ "\",")
+cmdRename :: String -> String -> FilePath -> IO ()
+cmdRename old new f = updatePinFile f ("\"" ++ old ++ "\",") ("\"" ++ new ++ "\",")
 
 updatePinFile :: FilePath -> String -> String -> IO ()
 updatePinFile f old new = do
@@ -166,8 +166,8 @@ updatePinFile f old new = do
 -- update
 
 -- Updating hashes is weird for files that are only one line. The file hash and the line hash are the same.
-cmdUpdateHashes :: FilePath -> String ->  IO ()
-cmdUpdateHashes f p = do 
+cmdUpdateHashes :: String -> FilePath -> IO ()
+cmdUpdateHashes p f= do 
                         tmp <- copyToTemp f
                         pins <- findPin p tmp
                         mapM_ (updateHashes f) pins
@@ -184,8 +184,8 @@ updateHashes f p = do
 
 -- path
 
-cmdPath :: FilePath -> String -> FilePath -> IO ()
-cmdPath f p n = do
+cmdPath :: String -> FilePath -> FilePath -> IO ()
+cmdPath p n f = do
                 tmp <- copyToTemp f
                 pins <- findPin p tmp
                 case pins of 
@@ -211,8 +211,8 @@ cleanPath =  map (\c -> if c == '\\' then '/'; else c)
 
 -- detail
 
-cmdDetail :: FilePath -> String -> IO ()
-cmdDetail f p = do
+cmdDetail :: String -> FilePath -> IO ()
+cmdDetail p f = do
                 pins <- findPin p f
                 let detes = map pinDetail pins
                 mapM_ (>>= putStrLn) detes 

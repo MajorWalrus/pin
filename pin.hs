@@ -6,7 +6,7 @@
 module Pin
     (
        Pin (..), PinCheck(..), protoPin, makePin, showPin, openPin, printPin, savePin,
-       readPins, findPin, checkPin, dropPin, scanFile, formatPinTime, check
+       readPins, findPin, dropPin, scanFile, formatPinTime, check
     ) where
 
 {-
@@ -14,7 +14,9 @@ module Pin
     quickcheck
     hlint
     
-    display time in local
+    V1.1
+    ability to add pin to any file
+    ability to group pins by something
 
     V2.0
     need some kind of settings, file types, remove the pins on scan
@@ -23,7 +25,6 @@ module Pin
     displaying known pins should check the hash of the file and the line
         if the pin has moved to a newline, but the hash has not changed, then
         just update the pin point
-    display UTC time as local time
 
     commands
     "show -f " which takes a file and shows all the pins in that file
@@ -47,6 +48,7 @@ module Pin
      .pin file needs a home => will be in the same folder as the executable
      allow user to update the pinPath when a file moves? => yep
      exception (IO) handling of missing .pin file
+     display time in local
 
     DEFER
       read = reads a file and shows the user the contents ???? really?
@@ -107,9 +109,9 @@ scanContents = findIndices (\x -> x == True) . map scanLine
 scanFile :: FilePath -> IO [Int]
 scanFile = fmap scanContents . getFileContents
 
-savePin :: Pin -> IO ()
-savePin p = do
-            pins <- openFile "pin.pin" AppendMode
+savePin :: FilePath -> Pin -> IO ()
+savePin f p = do
+            pins <- openFile f AppendMode
             hPutStrLn pins $ show p
             hClose pins
             return ()
@@ -130,12 +132,14 @@ dropPin f p = do
                 let d = filter (\x -> x /= p) c
                 writeFile f $ unlines $ map show d
                 removeFile tmp
-
+{-
+TODO pretty sure this is unused. what was it for?
 checkPin :: String -> IO PinCheck
 checkPin p = do
                     pins <- findPin p "pin.pin"
                     let pin = head pins
                     check pin
+-}
 
 formatPinTime :: Pin -> IO String
 formatPinTime = pinTimeFormat' . pinStoreTime
