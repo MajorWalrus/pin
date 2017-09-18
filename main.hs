@@ -21,7 +21,8 @@ main = do
 data PinCommand = CommandList | CommandShow {cmdPinAlias :: [String] } | 
     CommandScan { scanPath :: FilePath, scanFlags :: [String] } | CommandHelp | 
     CommandQuit | CommandDelete { delPin :: String} | CommandRename {oldPin :: String, newPin :: String} |
-    CommandUpdate { updatePin :: String } | CommandDetail { detailPin :: String } | CommandPath { pathPin :: String, pathPath :: String }
+    CommandUpdate { updatePin :: String } | CommandDetail { detailPin :: String } | CommandPath { pathPin :: String, pathPath :: String } |
+    CommandOpen {openPin :: String}
     deriving (Show)
 
 run :: Maybe PinCommand -> IO ()
@@ -35,6 +36,7 @@ run (Just (CommandRename o n))  = pinFile "pin.pin" >>= cmdRename o n       -- g
 run (Just ((CommandUpdate p)))  = pinFile "pin.pin" >>= cmdUpdateHashes p   -- good    
 run (Just (CommandDetail p))    = pinFile "pin.pin" >>= cmdDetail p         -- good
 run (Just (CommandPath p f))    = pinFile "pin.pin" >>= cmdPath p f         -- good
+run (Just (CommandOpen p))      = pinFile "pin.pin" >>= cmdOpen p
 run Nothing                     = cmdQuit                                   -- good
 
 pinFile :: String -> IO FilePath
@@ -61,6 +63,7 @@ parseArgs (x:xs) = case x of
                     "update"    -> makeUpdate xs
                     "detail"    -> makeDetail xs
                     "path"      -> makePath xs
+                    "open"      -> makeOpen xs
                     otherwise   -> Nothing
 
 -- originally this was going to allow the user to 
@@ -93,3 +96,7 @@ makePath :: [String] -> Maybe PinCommand
 makePath [] = Nothing
 makePath (x:[]) = Nothing
 makePath (x:y:xs) = Just $ CommandPath x y
+
+makeOpen :: [String] -> Maybe PinCommand
+makeOpen [] = Nothing
+makeOpen (x:xs) = Just $ CommandOpen x

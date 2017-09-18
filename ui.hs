@@ -5,7 +5,7 @@
 
 module UI
     (
-       cmdList, cmdShow, cmdScan, cmdDel, cmdRename, cmdUpdateHashes, cmdHelp, cmdQuit, cmdDetail, cmdPath, cleanPath
+       cmdList, cmdShow, cmdScan, cmdDel, cmdRename, cmdUpdateHashes, cmdHelp, cmdQuit, cmdDetail, cmdPath, cleanPath, cmdOpen
     ) where
 
 import Data.List (intercalate)
@@ -13,6 +13,8 @@ import System.Directory (getModificationTime, doesFileExist)
 import Pin (Pin(..), PinCheck(..), protoPin, readPins, findPin, showPin, dropPin, scanFile, savePin, makePin, formatPinTime, check)
 import Util (copyToTemp, replace, hashString, pinTimeFormat, pinTimeFormat', getFileContents)
 import Confirm
+import System.Process (spawnCommand, ProcessHandle)
+import Control.Exception
 
 -- list
 
@@ -220,9 +222,29 @@ cmdDetail p f = do
 pinDetail :: Pin -> IO String
 pinDetail p = fmap (("Alias: " ++ (pinAlias p) ++ "\n    File: " ++ (pinPath p) ++ "\n    Line: " ++ (show $ pinPoint p) ++ "\n    Pinned: ") ++) $ formatPinTime p
 
+-- open
+
+cmdOpen :: String -> FilePath -> IO ()
+cmdOpen p d = do
+                    tmp <- copyToTemp d
+                    ps <- findPin p tmp
+                    mapM_ (openPinFile) ps
+
+openPinFile :: Pin -> IO ()
+openPinFile p = do
+                let f = pinPath p
+                fnd <- doesFileExist f
+                case fnd of
+                    False -> putStrLn $ "The file " ++ f ++ " could not be found."
+                    True -> do
+                                result <- try (spawnCommand f) :: IO (Either SomeException ProcessHandle)
+                                case result of
+                                    Left _ -> putStrLn $ "An error has occurred opening the file."
+                                    Right val -> putStrLn $ "Opening " ++ f ++ " from " ++ pinAlias p ++ "."
 -- help
 cmdHelp :: IO ()
 cmdHelp = putStrLn "pin is a utility which allows you to put structured metadata (pins) \nin text files."
 
+-- quit
 cmdQuit :: IO ()
 cmdQuit = return () --exitSuccess?
