@@ -25,9 +25,10 @@ data PinCommand = CommandList | CommandShow {cmdPinAlias :: [String] } |
     CommandOpen {openPin :: String}
     deriving (Show)
 
+-- TODO is there a way to remove the repeated "pinFile "pin.pin" >>="
 run :: Maybe PinCommand -> IO ()
 run (Just CommandList)          = pinFile "pin.pin" >>= cmdList              -- good
-run (Just (CommandScan f a))    = pinFile "pin.pin" >>= cmdScan f a -- WHERE DOES pin.pin come from here?
+run (Just (CommandScan f a))    = pinFile "pin.pin" >>= cmdScan f a          -- good
 run (Just CommandQuit)          = cmdQuit
 run (Just CommandHelp)          = cmdHelp
 run (Just (CommandShow p))      = pinFile "pin.pin" >>= cmdShow p           -- good
@@ -36,7 +37,7 @@ run (Just (CommandRename o n))  = pinFile "pin.pin" >>= cmdRename o n       -- g
 run (Just ((CommandUpdate p)))  = pinFile "pin.pin" >>= cmdUpdateHashes p   -- good    
 run (Just (CommandDetail p))    = pinFile "pin.pin" >>= cmdDetail p         -- good
 run (Just (CommandPath p f))    = pinFile "pin.pin" >>= cmdPath p f         -- good
-run (Just (CommandOpen p))      = pinFile "pin.pin" >>= cmdOpen p
+run (Just (CommandOpen p))      = pinFile "pin.pin" >>= cmdOpen p           -- good
 run Nothing                     = cmdQuit                                   -- good
 
 pinFile :: String -> IO FilePath

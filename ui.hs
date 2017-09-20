@@ -78,9 +78,7 @@ cleanPinInLine = intercalate " " . filter (/= protoPin) . words
 
 -- scan
 
-data ScanOptions = RemovePin | LeavePin
-
-
+-- future data ScanOptions = RemovePin | LeavePin
 
 {-
     scanning one file
@@ -126,7 +124,6 @@ stripNewLine :: String -> String
 stripNewLine = filter (/= '\n')
 
 --- Future
-
 
 removePinFromLine :: FilePath -> Int -> IO ()
 removePinFromLine f l = do
@@ -243,8 +240,8 @@ openPinFile p = do
                                     Right val -> putStrLn $ "Opening " ++ f ++ " from " ++ pinAlias p ++ "."
 -- help
 cmdHelp :: IO ()
-cmdHelp = putStrLn "pin is a utility which allows you to put structured metadata (pins) \nin text files."
+cmdHelp = putStrLn "pin is a utility which allows you to put structured metadata (pins) \nin text files. \n\n   Version 0.3"
 
 -- quit
 cmdQuit :: IO ()
-cmdQuit = return () --exitSuccess?
+cmdQuit = return () --TODO exitSuccess?
