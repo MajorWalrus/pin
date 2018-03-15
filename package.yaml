@@ -1,23 +1,23 @@
 name:                pin
 version:             0.1.0.0
-github:              "githubuser/pin"
-license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2018 Author name here"
+github:              "MajorWalrus/pin"
+license:             GNU GPLv3
+author:              "Seth Dutcher"
+maintainer:          "sethjdutcher@gmail.com"
+copyright:           "2018 Seth Dutcher"
 
 extra-source-files:
 - README.md
 - ChangeLog.md
 
 # Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
+# synopsis:            pin is a utility which allows you to put pointers (pins) into text files.
+# category:            utility
 
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on Github at <https://github.com/githubuser/pin#readme>
+description:         Please see the README on Github at <https://github.com/MajorWalrus/pin#readme>
 
 dependencies:
 - base >= 4.7 && < 5
