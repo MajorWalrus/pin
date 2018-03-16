@@ -23,7 +23,7 @@ bar :: Foo -> Baz
 bar = <super cool code> // (>
 ```
 
-Then, when you later remember that there was that really neat thing on that one line you can run pin scan:
+Then, when you later remember there was that really neat thing on that one line you can run `pin scan`:
 
 ``` shell
 ~ pin scan <file>.hs
@@ -39,22 +39,22 @@ The alias you gave to the pin is stored by pin along with the line itself so tha
 bar (> <path>/<file>.hs
 ```
 
-Any time you need to come back to your creation you can show it.
+Any time you need to come back to your creation you can `show` it.
 
 ``` shell
 ~ pin show bar
 bar = <super cool code> //
 ```
 
-*Noted that the (> (pronounced 'pin') is removed when the pin is displayed, but is still present in the file.
+Note that for clarity the (> symbol (pronounced 'pin') is removed when the pin is displayed, but is still present in the file.
 
 ### Reminder
 
-Later you're in a meeting, taking notes in a text editor because you never could get the hang of org-mode. Suddendly you're asigned a task that requires a little more thinking than you'd normally bother with.
+Later you're in a meeting, taking notes in a text editor because you never could get the hang of org-mode. Suddendly you're assigned a task that requires a little more thinking than you'd normally bother with.
 
-Instead of switching to a todo app, or later searching the file for the task in a sea of ill-concieved managerial thoughts, you can put a pin in the line of the file and continue transcribing your leader's tangental ramblings.
+Instead of switching to a to-do app, or later searching the file for the task in a sea of ill-concieved managerial thoughts, you can put a pin in the line of the file and continue transcribing your leader's tangental ramblings.
 
-At then of the meeting you save your file and, as described above, you  scan the file for pins, give them an alias, and move on. 
+At the of the meeting you save your file and, as described above, you `scan` the file for pins, give them a aliases, and move on. 
 
 When you're ready to start working on the task you list your existing pins.
 
@@ -66,7 +66,7 @@ todo (> ../projects/notes2.txt
 review (> ../notes/asdf.txt
 ```
 
-And you discover, unhappliy, that you've missed a couple of tasks that you forgot you'd previously pinned. To see how long ago it was that you added the pin to your list you use detail:
+And you discover, unhappliy, that you've missed a couple of tasks that you forgot you'd previously pinned. To see how long ago it was that you added the pin to your list you use `detail`:
 
 ``` shell
 ~ pin detail donow
@@ -78,12 +78,14 @@ Alias: donow
 
 Thankfully the pin is so old it *must* be done. To remove the pin from your list you run:
 
+``` shell
 ~ pin del donow
+```
 
 ## More Commands
 
 ### alias
-Change the alias of a pin
+Change the alias of a pin.
 ``` shell
 ~ pin alias <current alias> <new alias>
 ```
@@ -111,32 +113,32 @@ This is a labor of, if not love, deep interest, but it is bounded by my personal
 
 ### Caution
 
-pin stores data in the clear. If you use it to keep track of anything financially or personally vital, you're insane.
+pin stores data in the *clear*. If you use it to keep track of anything financially or personally vital, you're insane.
 
 ## Roadmap
 
 ### Short Term
 * better file parsing to detect pins not surrounded by spaces
 * scan file should have flags to ignore or replace known pins
-* bettter help text and --help for all commmands
+* bettter help text and `--help` for all commmands
 
 ### Medium Term
 * output colors with import System.Console.ANSI
-* displaying known pins should check the hash of the file and the line
-  if the pin has moved to a newline, but the hash has not changed, then just update the pin point
-* naming pins in the source file. perhaps like `(alias>`
+* displaying known pins should check the hash of the file and the line.
+  if the pin has moved to a newline, but the hash has not changed, then just update the pin point.
+* providing aliases for pins in the source file. perhaps like `(alias>`
 
 #### New commands
 * show related = shows all the pins in the file
-* scan folder = above, but for all files in a folder
+* scan folder = like scan, but for all files in a folder
 * scan folder recursive = above, but for all sub-folders
 * scan here = scans the current directory with System.Directory.getCurrentDirectory
   * more sensible output for the above. perhaps lists with the first 40 chars of the line, the file, the path
 
 #### Lists of pins
-* list sort & filter = list all pins and 
+* list sort & filter = list all pins and apply basic organization
 * list all = list all pins with more data
-* list formatting - make the pins display fixed width
+* list formatting = make the pins display fixed width
 
 ### Long Term
 * some kind of settings to control file types, remove the pins on scan, ...
@@ -145,4 +147,10 @@ pin stores data in the clear. If you use it to keep track of anything financiall
 * ability to group pins
 
 ## Copyright
+
+### Copyright
+2018 Seth Dutcher
+
+### License
+GNU GPLv3
 
